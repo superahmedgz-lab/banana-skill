@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import base64
+import http.client
 import json
 import os
 import sys
@@ -53,7 +54,12 @@ def composite(images, prompt, model, api_key, aspect_ratio, resolution):
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=180) as resp:
-                result = json.loads(resp.read().decode("utf-8"))
+                try:
+                    raw = resp.read()
+                except http.client.IncompleteRead as ir:
+                    # Proxy can drop the final chunk terminator; the body is usually intact.
+                    raw = ir.partial
+            result = json.loads(raw.decode("utf-8"))
             break
         except urllib.error.HTTPError as e:
             body_txt = e.read().decode("utf-8") if e.fp else ""
